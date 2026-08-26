@@ -6,34 +6,51 @@ ANCHO, ALTO = 800, 600
 pantalla = pygame.display.set_mode((ANCHO, ALTO))
 reloj = pygame.time.Clock()
 
-pala = pygame.Rect(ANCHO // 2 - 60, ALTO - 40, 120, 15)
-pelota = pygame.Rect(ANCHO // 2 - 8, ALTO // 2, 16, 16)
-vel_x, vel_y = 5, -5
+fuente_grande = pygame.font.SysFont(None, 72)
+fuente_boton = pygame.font.SysFont(None, 36)
+BOTON = pygame.Rect(ANCHO // 2 - 90, ALTO // 2 + 30, 180, 50)
 
-# Ladrillos: una fila de rectángulos
 FILAS, COLS = 4, 10
-ladrillos = []
-for fila in range(FILAS):
-    for col in range(COLS):
-        ladrillos.append(pygame.Rect(col * 80 + 5, fila * 30 + 40, 70, 20))
 
-vidas = 3
-puntos = 0
-ladrillos_destruidos = 0
-ganaste = False
-fuente = pygame.font.SysFont(None, 72)
+
+def nuevos_ladrillos():
+    lista = []
+    for fila in range(FILAS):
+        for col in range(COLS):
+            lista.append(pygame.Rect(col * 80 + 5, fila * 30 + 40, 70, 20))
+    return lista
+
+
+def reiniciar():
+    global pala, pelota, vel_x, vel_y, ladrillos, vidas, puntos
+    global ladrillos_destruidos, ganaste, perdiste
+    pala = pygame.Rect(ANCHO // 2 - 60, ALTO - 40, 120, 15)
+    pelota = pygame.Rect(ANCHO // 2 - 8, ALTO // 2, 16, 16)
+    vel_x, vel_y = 5, -5
+    ladrillos = nuevos_ladrillos()
+    vidas = 3
+    puntos = 0
+    ladrillos_destruidos = 0
+    ganaste = False
+    perdiste = False
+
+
+reiniciar()
 
 ejecutando = True
 while ejecutando:
     for evento in pygame.event.get():
         if evento.type == pygame.QUIT:
             ejecutando = False
+        elif evento.type == pygame.MOUSEBUTTONDOWN:
+            if (ganaste or perdiste) and BOTON.collidepoint(evento.pos):
+                reiniciar()
 
     # Paleta sigue al mouse
     pala.x = pygame.mouse.get_pos()[0] - pala.width // 2
     pala.x = max(0, min(ANCHO - pala.width, pala.x))
 
-    if not ganaste:
+    if not ganaste and not perdiste:
         # Mover la pelota
         pelota.x += vel_x
         pelota.y += vel_y
@@ -66,8 +83,9 @@ while ejecutando:
         if pelota.bottom >= ALTO:
             vidas -= 1
             pelota.center = (ANCHO // 2, ALTO // 2)
+            vel_y = -abs(vel_y)  # relanzar hacia arriba, no seguir cayendo
             if vidas == 0:
-                ejecutando = False
+                perdiste = True
 
     # Dibujar
     pantalla.fill((15, 15, 30))
@@ -76,10 +94,17 @@ while ejecutando:
     for ladrillo in ladrillos:
         pygame.draw.rect(pantalla, (255, 120, 120), ladrillo)
 
-    if ganaste:
-        texto = fuente.render("¡Ganaste!", True, (255, 220, 60))
-        rect = texto.get_rect(center=(ANCHO // 2, ALTO // 2))
-        pantalla.blit(texto, rect)
+    if ganaste or perdiste:
+        mensaje = "¡Ganaste!" if ganaste else "Perdiste"
+        color = (255, 220, 60) if ganaste else (255, 90, 90)
+        texto = fuente_grande.render(mensaje, True, color)
+        rect_texto = texto.get_rect(center=(ANCHO // 2, ALTO // 2 - 40))
+        pantalla.blit(texto, rect_texto)
+
+        pygame.draw.rect(pantalla, (60, 200, 100), BOTON, border_radius=8)
+        etiqueta = fuente_boton.render("Reintentar", True, (15, 15, 30))
+        rect_etiqueta = etiqueta.get_rect(center=BOTON.center)
+        pantalla.blit(etiqueta, rect_etiqueta)
 
     pygame.display.set_caption(f"Arkanoid - Puntos: {puntos} - Vidas: {vidas} - Ladrillos: {len(ladrillos)}")
     pygame.display.flip()
